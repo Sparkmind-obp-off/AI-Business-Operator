@@ -1,36 +1,76 @@
 # AI Business Operator
 
-AI Business Operator is a demand-first business operating system designed to discover real market demand, turn signals into scored opportunities, and orchestrate execution with AI agents.
+## Project Overview
 
-## Core Principle
+- **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
+- **Current phase:** Session 1 — repository foundation and canonical data contracts.
+- **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
+- **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
-> Demand first → Intelligence → Opportunity → Action → Execution → Feedback.
+## Completed Features
 
-We do not build random features first. The system should collect evidence of demand from real sources, normalize it, score opportunities, and help the operator decide what to build, sell, or pursue.
+- Central runtime configuration validation with separate public and server-secret boundaries.
+- Structured JSON logging with request/trace correlation IDs and secret redaction.
+- Liveness and readiness endpoints; readiness explicitly does not assert external provider health.
+- Versioned Zod contracts and inferred TypeScript types for Source, RawEvent, DemandObject, DemandEvidence, Opportunity, OpportunityEvidence, Score, Action, ActionOutcome, OperatorRun, ToolCall, and AuditEvent.
+- Deterministic synthetic `Source → RawEvent → DemandObject` fixture with fact/inference separation and complete provenance.
+- Automated contract, fixture, security/configuration, and HTTP endpoint tests.
+- GitHub Actions validation for lint, typecheck, tests, build, and basic tracked-secret scanning.
 
-## Architecture
+## Functional URIs
 
-1. Source & Search Layer
-2. Integration / Automation Layer (Make.com and other adapters)
-3. Ingestion & Normalization Layer
-4. Demand Intelligence Layer
-5. Opportunity Database
-6. Scoring & Prioritization Engine
-7. AI Business Operator / Orchestration Layer
-8. Action & Execution Layer
-9. Feedback / Learning Layer
-10. Live Voice Interface
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/` | Minimal Session 1 entry page |
+| `GET` | `/health/live` | Process/application liveness |
+| `GET` | `/health/ready` | Configuration readiness and truthful provider status |
+| `GET` | `/api/v1/fixtures/demand-signal` | Deterministic synthetic DemandObject demonstration |
 
-## Data-source strategy
+No query parameters are currently implemented.
 
-Official APIs are preferred whenever available and permitted. Approval-gated APIs must not block the entire product. Where a source cannot be accessed through an approved first-party API, the system may use a compliant third-party integration or automation provider such as Make.com, subject to that provider's terms, the source platform's terms, privacy requirements, and applicable law.
+## Data Architecture
 
-The application layer must remain provider-agnostic: changing an ingestion provider must not require rewriting Demand Intelligence or the Operator.
+Canonical domain contracts live in `src/domain/contracts.ts`. The Session 1 fixture is synthetic test data and does not access a provider or require credentials. No database is used yet; persistence and migrations are deferred to the next appropriate phase. Provider-specific extensions must remain outside canonical business logic.
 
-## Documentation
+## Local Usage
 
-See `/docs` for the product, business, data, architecture, security, implementation, testing, and AI-agent contracts.
+```bash
+npm install
+npm run validate
+npm run build
+npx wrangler pages dev dist --ip 0.0.0.0 --port 3000
+```
 
-## Status
+Then open `http://localhost:3000`. Local defaults disable external side effects and require no secrets. Copy `.env.example` only when environment overrides are needed; never commit `.env` or `.dev.vars`.
 
-Phase 0 — Architecture and documentation foundation.
+## Validation Commands
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+# all gates
+npm run validate
+```
+
+## Not Yet Implemented
+
+- Database schema/migrations and canonical persistence.
+- Ingestion API, idempotency, and deduplication beyond the deterministic fixture boundary.
+- Demand intelligence provider/model integration.
+- Opportunity creation and deterministic scoring behavior.
+- AI Operator, tool registry execution, approval workflow, external actions, Make.com, live providers, voice, and polished UI.
+
+## Recommended Next Step
+
+Implement the smallest Phase 2 ingestion service around the existing schemas: validated input, idempotency key, raw-event preservation policy, deterministic normalization, and provenance tests. Choose persistence only after defining the migration and deployment boundary.
+
+## Deployment
+
+- **Target:** Cloudflare Pages (BYOK)
+- **Production URL:** not yet deployed at the time of this README update
+- **GitHub:** https://github.com/Sparkmind-obp-off/AI-Business-Operator
+- **Configuration:** `wrangler.jsonc`; production secrets must be set through Cloudflare, never source control.
+
+See `docs/26_SESSION_1_IMPLEMENTATION_NOTES.md` for implementation reconciliation and scope boundaries.
