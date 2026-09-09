@@ -42,6 +42,18 @@ Response returns accepted event IDs, duplicate IDs, validation errors, and proce
 
 `GET /api/v1/opportunities?status=qualified&min_score=70`
 
+## Session 4 Opportunity record boundary
+
+The canonical `Opportunity` remains unchanged. The Phase 4 provider-neutral repository stores an `OpportunityRecord` wrapper containing:
+
+- one canonical `Opportunity` with `currentScore` and `scoreVersion` set to `null` until Phase 5;
+- `OpportunityEvidence[]` links to canonical demand IDs;
+- compact source/raw-event references and continuous provenance;
+- append-only lifecycle history for the transitions implemented in the current phase;
+- a deterministic identity key derived from canonical demand evidence.
+
+The current implementation is process-local and non-durable. It supports get/list plus exact lifecycle-status and segment filters with stable `createdAt`, then ID ordering. Session 4 permits only `new → enriched`; future lifecycle transitions remain reserved for their owning phases.
+
 ## Privacy
 
 Only store personal/contact information when necessary, lawful, and supported by the source's permitted use. Prefer business/entity-level contact channels over personal information.

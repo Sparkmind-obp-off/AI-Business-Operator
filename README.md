@@ -3,7 +3,7 @@
 ## Project Overview
 
 - **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
-- **Current phase:** Session 3 — deterministic, provider-neutral Demand Intelligence with process-local ingestion storage.
+- **Current phase:** Session 4 — deterministic, evidence-first Opportunity Database with process-local storage.
 - **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
 - **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
@@ -25,6 +25,11 @@
 - Central freshness windows (`fresh ≤ 7 days`, `aging ≤ 30 days`, otherwise `stale`) with published-time preference, captured-time fallback, and explicit future-timestamp rejection state.
 - Safe intelligence lifecycle logs and a deterministic synthetic fixture/API path; source text remains untrusted data and is not logged.
 - Reproducible CI validation script plus a GitHub Actions workflow template for lint, typecheck, tests, build, audit, and basic tracked-secret scanning.
+- Provider-neutral `DemandObject + DemandIntelligenceResult → Opportunity` service with canonical validation and deterministic identity.
+- Traceable Opportunity records linking demand IDs, raw-event/source references, evidence relationships, and continuous provenance without duplicating raw payloads.
+- Explicit lifecycle history with `new → enriched` as the only Phase 4 transition; later-phase states are rejected.
+- Process-local Opportunity repository supporting create/get/list, status and segment filters, stable ordering, and duplicate suppression.
+- Minimal Opportunity fixture and CRUD/lifecycle API routes with safe structured logs and correlation IDs.
 
 ## Functional URIs
 
@@ -37,14 +42,19 @@
 | `GET` | `/api/v1/fixtures/demand-intelligence` | Deterministic synthetic Demand Intelligence result |
 | `POST` | `/api/v1/ingestion/events` | Validate, deduplicate, preserve, and deterministically normalize one or more source events |
 | `POST` | `/api/v1/intelligence/classify` | Validate a canonical `{ "demand": DemandObject }` and return detected facts, bounded inferences, evidence, and provenance |
+| `GET` | `/api/v1/fixtures/opportunity` | Deterministically create/retrieve the synthetic unscored Opportunity fixture |
+| `POST` | `/api/v1/opportunities` | Create an Opportunity from canonical `{ "demand", "intelligence" }` input |
+| `GET` | `/api/v1/opportunities` | List Opportunities; optional exact `status` and `segment` query filters |
+| `GET` | `/api/v1/opportunities/:id` | Retrieve one Opportunity record and its evidence/lifecycle linkage |
+| `POST` | `/api/v1/opportunities/:id/transitions` | Apply validated `{ "status", "reason" }` lifecycle transition |
 
 The ingestion endpoint requires an `Idempotency-Key` header (8–128 safe characters). It returns `202` for newly processed events, `200` for duplicates, `409` for conflicting reuse of a key, and `400`/`422` for malformed or invalid input. No query parameters are currently implemented.
 
 ## Data Architecture
 
-Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates the observed source facts. Rule matches become evidence references; classifications, confidence, and freshness remain explicit inferences. The synthetic fixture, ingestion path, and intelligence path do not access a provider or require credentials. Provider fields are accepted only under provider metadata namespaces, while secrets and secret-like keys are rejected.
+Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, keeps score fields null, and stores source references plus lifecycle history in an `OpportunityRecord`. The synthetic fixture and application paths do not access a provider or require credentials. Provider fields remain outside canonical Opportunity business logic.
 
-The repository interface maps conceptually to `sources → raw_events → demand_objects → demand_evidence`, but its current implementation is an in-memory, process-local map. It is **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are currently computed on request and are not durably stored. Provider-specific logic remains outside canonical business logic.
+The repository interfaces map conceptually to `sources → raw_events → demand_objects → demand_evidence → opportunities → opportunity_evidence`. Current ingestion and Opportunity implementations are in-memory, process-local maps. They are **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are computed on request and are not durably stored. Stable deterministic ordering applies only within the current process-local repository instance.
 
 ## Local Usage
 
@@ -108,12 +118,13 @@ External source text is stored as untrusted data and never executed as applicati
 - Durable storage and history for Demand Intelligence results/classification revisions.
 - Topic, market, location, budget, and contactability enrichment beyond the current narrow deterministic rules.
 - Demand intelligence provider/model integration; no LLM classification is used in Session 3.
-- Opportunity creation and deterministic scoring behavior.
+- Durable Opportunity persistence across Cloudflare isolates/deployments.
+- Opportunity scoring, score history, weights, and priority bands (Phase 5).
 - AI Operator, tool registry execution, approval workflow, external actions, Make.com, live providers, voice, and polished UI.
 
 ## Recommended Next Step
 
-Proceed to **Phase 4 — Opportunity Database** with evidence linkage, lifecycle history, and retrieval while adding durable storage behind the existing repository boundaries. After Gate 4, implement Phase 5 deterministic scoring. D1 is a candidate for Cloudflare deployment, but no production database architecture is claimed yet.
+Proceed to **Phase 5 — Deterministic Opportunity Scoring** using the existing unscored Opportunity contract and evidence linkage. Durable storage remains a separate infrastructure increment; D1 is a candidate, but no production database architecture is claimed yet.
 
 ## Deployment
 
