@@ -17,7 +17,7 @@ export function getReadiness(config: AppConfig): ReadinessStatus {
     dependencies: [],
     providers: {
       status: 'not_checked',
-      message: 'No external provider is configured or asserted healthy in Session 1.',
+      message: 'No external provider is configured or asserted healthy in Session 2.',
     },
   }
 }
