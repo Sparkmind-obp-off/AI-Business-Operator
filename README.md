@@ -3,7 +3,7 @@
 ## Project Overview
 
 - **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
-- **Current phase:** Session 2 — provider-neutral ingestion gateway with process-local storage.
+- **Current phase:** Session 3 — deterministic, provider-neutral Demand Intelligence with process-local ingestion storage.
 - **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
 - **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
@@ -19,6 +19,11 @@
 - Deterministic SHA-256 event identity, idempotency-key conflict handling, external-ID/checksum deduplication, and process-local repository abstraction.
 - RawEvent preservation plus deterministic DemandObject and DemandEvidence normalization without LLM calls or unsupported classification claims.
 - Structured ingestion lifecycle logs containing correlation and canonical IDs only; source payload content and credentials are not logged.
+- Provider-neutral `DemandObject → DemandIntelligenceResult` service with deterministic rule-based signal/intent classification.
+- Explicit `detected` facts versus `inferred` attributes, with bounded confidence, evidence basis, and stable source/raw-event provenance.
+- Controlled commercial intent, evidence strength, urgency, recurrence, and freshness classification; unsupported signals remain unknown/low-confidence.
+- Central freshness windows (`fresh ≤ 7 days`, `aging ≤ 30 days`, otherwise `stale`) with published-time preference, captured-time fallback, and explicit future-timestamp rejection state.
+- Safe intelligence lifecycle logs and a deterministic synthetic fixture/API path; source text remains untrusted data and is not logged.
 - Reproducible CI validation script plus a GitHub Actions workflow template for lint, typecheck, tests, build, audit, and basic tracked-secret scanning.
 
 ## Functional URIs
@@ -29,15 +34,17 @@
 | `GET` | `/health/live` | Process/application liveness |
 | `GET` | `/health/ready` | Configuration readiness and truthful provider status |
 | `GET` | `/api/v1/fixtures/demand-signal` | Deterministic synthetic DemandObject demonstration |
+| `GET` | `/api/v1/fixtures/demand-intelligence` | Deterministic synthetic Demand Intelligence result |
 | `POST` | `/api/v1/ingestion/events` | Validate, deduplicate, preserve, and deterministically normalize one or more source events |
+| `POST` | `/api/v1/intelligence/classify` | Validate a canonical `{ "demand": DemandObject }` and return detected facts, bounded inferences, evidence, and provenance |
 
 The ingestion endpoint requires an `Idempotency-Key` header (8–128 safe characters). It returns `202` for newly processed events, `200` for duplicates, `409` for conflicting reuse of a key, and `400`/`422` for malformed or invalid input. No query parameters are currently implemented.
 
 ## Data Architecture
 
-Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 adds `unknown` as the honest, non-classified `intentType` produced by structural normalization; semantic demand classification remains deferred. The synthetic fixture and ingestion path do not access a provider or require credentials. Provider fields are accepted only under provider metadata namespaces, while secrets and secret-like keys are rejected.
+Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates the observed source facts. Rule matches become evidence references; classifications, confidence, and freshness remain explicit inferences. The synthetic fixture, ingestion path, and intelligence path do not access a provider or require credentials. Provider fields are accepted only under provider metadata namespaces, while secrets and secret-like keys are rejected.
 
-The repository interface maps conceptually to `sources → raw_events → demand_objects → demand_evidence`, but its current implementation is an in-memory, process-local map. It is **not durable production persistence** and can reset between Cloudflare isolates or deployments. Provider-specific logic remains outside canonical business logic.
+The repository interface maps conceptually to `sources → raw_events → demand_objects → demand_evidence`, but its current implementation is an in-memory, process-local map. It is **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are currently computed on request and are not durably stored. Provider-specific logic remains outside canonical business logic.
 
 ## Local Usage
 
@@ -98,14 +105,15 @@ External source text is stored as untrusted data and never executed as applicati
 
 - Durable database schema/migrations and canonical persistence.
 - Authentication/authorization for the ingestion endpoint.
-- Semantic Demand Intelligence classification; normalized topic, market, intent, urgency, and commercial intent remain explicitly unknown/unclassified.
-- Demand intelligence provider/model integration.
+- Durable storage and history for Demand Intelligence results/classification revisions.
+- Topic, market, location, budget, and contactability enrichment beyond the current narrow deterministic rules.
+- Demand intelligence provider/model integration; no LLM classification is used in Session 3.
 - Opportunity creation and deterministic scoring behavior.
 - AI Operator, tool registry execution, approval workflow, external actions, Make.com, live providers, voice, and polished UI.
 
 ## Recommended Next Step
 
-Implement durable storage behind the existing ingestion repository interface, including migrations, transactional idempotency/deduplication, retention policy, and an authenticated ingestion boundary. D1 is a candidate for Cloudflare deployment, but no production database architecture is claimed yet.
+Proceed to **Phase 4 — Opportunity Database** with evidence linkage, lifecycle history, and retrieval while adding durable storage behind the existing repository boundaries. After Gate 4, implement Phase 5 deterministic scoring. D1 is a candidate for Cloudflare deployment, but no production database architecture is claimed yet.
 
 ## Deployment
 

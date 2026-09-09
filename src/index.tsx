@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { getReadiness } from './app/health'
 import { createIngestionHandler, normalizeFixtureDemand } from './ingestion'
+import { createIntelligenceHandler, DemandIntelligenceService } from './intelligence'
 import { ConfigurationError, loadConfig, type RuntimeEnvironment } from './shared/config'
 import { createLogger, type CorrelationContext } from './shared/logger'
 
@@ -41,12 +42,13 @@ app.get('/', (c) =>
   <body>
     <main>
       <h1>AI Business Operator</h1>
-      <p>Session 2 ingestion foundation is running.</p>
+      <p>Session 3 deterministic Demand Intelligence is running.</p>
       <nav aria-label="Foundation endpoints">
         <ul>
           <li><a href="/health/live">Liveness</a></li>
           <li><a href="/health/ready">Readiness</a></li>
-          <li><a href="/api/v1/fixtures/demand-signal">Deterministic fixture</a></li>
+          <li><a href="/api/v1/fixtures/demand-signal">Deterministic demand fixture</a></li>
+          <li><a href="/api/v1/fixtures/demand-intelligence">Deterministic intelligence fixture</a></li>
         </ul>
       </nav>
     </main>
@@ -67,7 +69,24 @@ app.get('/api/v1/fixtures/demand-signal', (c) => {
   return c.json({ data: result.value })
 })
 
+app.get('/api/v1/fixtures/demand-intelligence', (c) => {
+  const demand = normalizeFixtureDemand()
+  if (!demand.ok) return c.json({ error: demand.error }, 500)
+
+  const config = loadConfig(c.env)
+  const correlation = c.get('correlation')
+  const logger = createLogger(config.public.environment, correlation)
+  const service = new DemandIntelligenceService({
+    now: () => '2026-01-15T10:30:00.000Z',
+    log: (eventName, fields) => logger(fields.errorCode ? 'warn' : 'info', eventName, fields),
+  })
+  const result = service.analyze(demand.value, correlation)
+  if (!result.ok) return c.json({ error: result.error }, 500)
+  return c.json({ data: result.value })
+})
+
 app.post('/api/v1/ingestion/events', createIngestionHandler())
+app.post('/api/v1/intelligence/classify', createIntelligenceHandler())
 
 app.notFound((c) =>
   c.json(
