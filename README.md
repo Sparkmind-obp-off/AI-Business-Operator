@@ -15,7 +15,7 @@
 - Versioned Zod contracts and inferred TypeScript types for Source, RawEvent, DemandObject, DemandEvidence, Opportunity, OpportunityEvidence, Score, Action, ActionOutcome, OperatorRun, ToolCall, and AuditEvent.
 - Deterministic synthetic `Source → RawEvent → DemandObject` fixture with fact/inference separation and complete provenance.
 - Automated contract, fixture, security/configuration, and HTTP endpoint tests.
-- GitHub Actions validation for lint, typecheck, tests, build, and basic tracked-secret scanning.
+- Reproducible CI validation script plus a GitHub Actions workflow template for lint, typecheck, tests, build, audit, and basic tracked-secret scanning.
 
 ## Functional URIs
 
@@ -50,8 +50,10 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
-# all gates
+# all gates in the current checkout
 npm run validate
+# clean-install CI equivalent, including audit and secret scan
+./ci/validate.sh
 ```
 
 ## Not Yet Implemented
