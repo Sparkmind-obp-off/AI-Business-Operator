@@ -89,6 +89,7 @@ export const IntentTypeSchema = z.enum([
   'recurring_workflow_problem',
   'product_gap',
   'commercial_trend',
+  'unknown',
 ])
 
 export const DemandObjectSchema = z.object({

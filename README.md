@@ -3,7 +3,7 @@
 ## Project Overview
 
 - **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
-- **Current phase:** Session 1 — repository foundation and canonical data contracts.
+- **Current phase:** Session 2 — provider-neutral ingestion gateway with process-local storage.
 - **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
 - **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
@@ -15,6 +15,10 @@
 - Versioned Zod contracts and inferred TypeScript types for Source, RawEvent, DemandObject, DemandEvidence, Opportunity, OpportunityEvidence, Score, Action, ActionOutcome, OperatorRun, ToolCall, and AuditEvent.
 - Deterministic synthetic `Source → RawEvent → DemandObject` fixture with fact/inference separation and complete provenance.
 - Automated contract, fixture, security/configuration, and HTTP endpoint tests.
+- Validated `POST /api/v1/ingestion/events` boundary for one or more provider-neutral source events.
+- Deterministic SHA-256 event identity, idempotency-key conflict handling, external-ID/checksum deduplication, and process-local repository abstraction.
+- RawEvent preservation plus deterministic DemandObject and DemandEvidence normalization without LLM calls or unsupported classification claims.
+- Structured ingestion lifecycle logs containing correlation and canonical IDs only; source payload content and credentials are not logged.
 - Reproducible CI validation script plus a GitHub Actions workflow template for lint, typecheck, tests, build, audit, and basic tracked-secret scanning.
 
 ## Functional URIs
@@ -25,12 +29,15 @@
 | `GET` | `/health/live` | Process/application liveness |
 | `GET` | `/health/ready` | Configuration readiness and truthful provider status |
 | `GET` | `/api/v1/fixtures/demand-signal` | Deterministic synthetic DemandObject demonstration |
+| `POST` | `/api/v1/ingestion/events` | Validate, deduplicate, preserve, and deterministically normalize one or more source events |
 
-No query parameters are currently implemented.
+The ingestion endpoint requires an `Idempotency-Key` header (8–128 safe characters). It returns `202` for newly processed events, `200` for duplicates, `409` for conflicting reuse of a key, and `400`/`422` for malformed or invalid input. No query parameters are currently implemented.
 
 ## Data Architecture
 
-Canonical domain contracts live in `src/domain/contracts.ts`. The Session 1 fixture is synthetic test data and does not access a provider or require credentials. No database is used yet; persistence and migrations are deferred to the next appropriate phase. Provider-specific extensions must remain outside canonical business logic.
+Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 adds `unknown` as the honest, non-classified `intentType` produced by structural normalization; semantic demand classification remains deferred. The synthetic fixture and ingestion path do not access a provider or require credentials. Provider fields are accepted only under provider metadata namespaces, while secrets and secret-like keys are rejected.
+
+The repository interface maps conceptually to `sources → raw_events → demand_objects → demand_evidence`, but its current implementation is an in-memory, process-local map. It is **not durable production persistence** and can reset between Cloudflare isolates or deployments. Provider-specific logic remains outside canonical business logic.
 
 ## Local Usage
 
@@ -56,17 +63,49 @@ npm run validate
 ./ci/validate.sh
 ```
 
+## Ingestion Example
+
+```bash
+curl -X POST http://localhost:3000/api/v1/ingestion/events \
+  -H 'content-type: application/json' \
+  -H 'Idempotency-Key: synthetic-demo-001' \
+  -d '{
+    "source": {
+      "id": "source_manual_demo",
+      "provider": "manual.demo",
+      "sourceType": "manual",
+      "displayName": "Synthetic demo source",
+      "status": "available",
+      "capabilities": ["submit_synthetic_event"],
+      "authMode": "none",
+      "termsReference": "https://fixture.example.test/terms",
+      "adapter": { "name": "manual.fixture", "version": "1.0.0", "accessMethod": "fixture" },
+      "providerMetadata": { "synthetic": true }
+    },
+    "events": [{
+      "externalEventId": "synthetic-001",
+      "sourceUrl": "https://fixture.example.test/events/synthetic-001",
+      "capturedAt": "2026-09-09T12:00:00.000Z",
+      "content": { "text": "Synthetic source content.", "language": "en" },
+      "providerMetadata": { "synthetic": true }
+    }]
+  }'
+```
+
+External source text is stored as untrusted data and never executed as application instructions.
+
 ## Not Yet Implemented
 
-- Database schema/migrations and canonical persistence.
-- Ingestion API, idempotency, and deduplication beyond the deterministic fixture boundary.
+- Durable database schema/migrations and canonical persistence.
+- Authentication/authorization for the ingestion endpoint.
+- Semantic Demand Intelligence classification; normalized topic, market, intent, urgency, and commercial intent remain explicitly unknown/unclassified.
 - Demand intelligence provider/model integration.
 - Opportunity creation and deterministic scoring behavior.
 - AI Operator, tool registry execution, approval workflow, external actions, Make.com, live providers, voice, and polished UI.
 
 ## Recommended Next Step
 
-Implement the smallest Phase 2 ingestion service around the existing schemas: validated input, idempotency key, raw-event preservation policy, deterministic normalization, and provenance tests. Choose persistence only after defining the migration and deployment boundary.
+Implement durable storage behind the existing ingestion repository interface, including migrations, transactional idempotency/deduplication, retention policy, and an authenticated ingestion boundary. D1 is a candidate for Cloudflare deployment, but no production database architecture is claimed yet.
 
 ## Deployment
 

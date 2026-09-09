@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { getReadiness } from './app/health'
-import { normalizeFixtureDemand } from './ingestion'
+import { createIngestionHandler, normalizeFixtureDemand } from './ingestion'
 import { ConfigurationError, loadConfig, type RuntimeEnvironment } from './shared/config'
 import { createLogger, type CorrelationContext } from './shared/logger'
 
@@ -41,7 +41,7 @@ app.get('/', (c) =>
   <body>
     <main>
       <h1>AI Business Operator</h1>
-      <p>Session 1 foundation is running.</p>
+      <p>Session 2 ingestion foundation is running.</p>
       <nav aria-label="Foundation endpoints">
         <ul>
           <li><a href="/health/live">Liveness</a></li>
@@ -66,6 +66,8 @@ app.get('/api/v1/fixtures/demand-signal', (c) => {
   if (!result.ok) return c.json({ error: result.error }, 500)
   return c.json({ data: result.value })
 })
+
+app.post('/api/v1/ingestion/events', createIngestionHandler())
 
 app.notFound((c) =>
   c.json(

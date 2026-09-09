@@ -1,6 +1,7 @@
 export type AppErrorCode =
   | 'CONFIG_INVALID'
   | 'VALIDATION_FAILED'
+  | 'IDEMPOTENCY_CONFLICT'
   | 'NOT_FOUND'
   | 'INTERNAL_ERROR'
 
