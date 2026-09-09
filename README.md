@@ -3,7 +3,7 @@
 ## Project Overview
 
 - **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
-- **Current phase:** Session 4 — deterministic, evidence-first Opportunity Database with process-local storage.
+- **Current phase:** Session 5 — deterministic, evidence-backed Opportunity Scoring with process-local score history.
 - **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
 - **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
@@ -30,6 +30,10 @@
 - Explicit lifecycle history with `new → enriched` as the only Phase 4 transition; later-phase states are rejected.
 - Process-local Opportunity repository supporting create/get/list, status and segment filters, stable ordering, and duplicate suppression.
 - Minimal Opportunity fixture and CRUD/lifecycle API routes with safe structured logs and correlation IDs.
+- Provider-neutral `Opportunity + DemandObject + DemandIntelligenceResult → ScoreRecord` service using the canonical seven weighted dimensions.
+- Explicit `opportunity-scoring-v1` formula metadata, transparent component contributions, conservative unknown handling, freshness/confidence modifiers, and deterministic score bands.
+- Immutable process-local score history with input-fingerprint idempotency, latest-score retrieval, evidence references, and synchronized Opportunity `scored` lifecycle state.
+- Minimal scoring fixture and `POST`/`GET` score API routes with safe `opportunity.scored` metadata logs and a non-guarantee disclaimer.
 
 ## Functional URIs
 
@@ -42,19 +46,22 @@
 | `GET` | `/api/v1/fixtures/demand-intelligence` | Deterministic synthetic Demand Intelligence result |
 | `POST` | `/api/v1/ingestion/events` | Validate, deduplicate, preserve, and deterministically normalize one or more source events |
 | `POST` | `/api/v1/intelligence/classify` | Validate a canonical `{ "demand": DemandObject }` and return detected facts, bounded inferences, evidence, and provenance |
-| `GET` | `/api/v1/fixtures/opportunity` | Deterministically create/retrieve the synthetic unscored Opportunity fixture |
+| `GET` | `/api/v1/fixtures/opportunity` | Deterministically create/retrieve the synthetic Opportunity fixture |
+| `GET` | `/api/v1/fixtures/opportunity-score` | Calculate/retrieve the deterministic synthetic Score fixture |
 | `POST` | `/api/v1/opportunities` | Create an Opportunity from canonical `{ "demand", "intelligence" }` input |
 | `GET` | `/api/v1/opportunities` | List Opportunities; optional exact `status` and `segment` query filters |
 | `GET` | `/api/v1/opportunities/:id` | Retrieve one Opportunity record and its evidence/lifecycle linkage |
 | `POST` | `/api/v1/opportunities/:id/transitions` | Apply validated `{ "status", "reason" }` lifecycle transition |
+| `POST` | `/api/v1/opportunities/:id/score` | Score an enriched Opportunity from canonical `{ "demand", "intelligence" }` input |
+| `GET` | `/api/v1/opportunities/:id/score` | Retrieve latest Score and immutable process-local score history |
 
 The ingestion endpoint requires an `Idempotency-Key` header (8–128 safe characters). It returns `202` for newly processed events, `200` for duplicates, `409` for conflicting reuse of a key, and `400`/`422` for malformed or invalid input. No query parameters are currently implemented.
 
 ## Data Architecture
 
-Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, keeps score fields null, and stores source references plus lifecycle history in an `OpportunityRecord`. The synthetic fixture and application paths do not access a provider or require credentials. Provider fields remain outside canonical Opportunity business logic.
+Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, and stores source references plus lifecycle history in an `OpportunityRecord`. Session 5 consumes the validated Opportunity record, DemandObject, and DemandIntelligenceResult through `src/scoring`; it creates a separate immutable `ScoreRecord`, updates only the Opportunity score convenience fields/lifecycle, and exposes all seven contributions. The synthetic fixture and application paths do not access a provider or require credentials. Provider fields remain outside canonical Opportunity and scoring logic.
 
-The repository interfaces map conceptually to `sources → raw_events → demand_objects → demand_evidence → opportunities → opportunity_evidence`. Current ingestion and Opportunity implementations are in-memory, process-local maps. They are **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are computed on request and are not durably stored. Stable deterministic ordering applies only within the current process-local repository instance.
+The repository interfaces map conceptually to `sources → raw_events → demand_objects → demand_evidence → opportunities → opportunity_evidence → scores`. Current ingestion, Opportunity, and Score implementations are in-memory, process-local maps. They are **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are computed on request and are not durably stored. Stable deterministic ordering and latest-score retrieval apply only within the current process-local repository instance.
 
 ## Local Usage
 
@@ -119,12 +126,13 @@ External source text is stored as untrusted data and never executed as applicati
 - Topic, market, location, budget, and contactability enrichment beyond the current narrow deterministic rules.
 - Demand intelligence provider/model integration; no LLM classification is used in Session 3.
 - Durable Opportunity persistence across Cloudflare isolates/deployments.
-- Opportunity scoring, score history, weights, and priority bands (Phase 5).
+- Durable Score persistence across Cloudflare isolates/deployments.
+- Human score override workflow and later outcome-based calibration.
 - AI Operator, tool registry execution, approval workflow, external actions, Make.com, live providers, voice, and polished UI.
 
 ## Recommended Next Step
 
-Proceed to **Phase 5 — Deterministic Opportunity Scoring** using the existing unscored Opportunity contract and evidence linkage. Durable storage remains a separate infrastructure increment; D1 is a candidate, but no production database architecture is claimed yet.
+Proceed to **Phase 6 — AI Business Operator Orchestration** above the deterministic scoring boundary. Durable storage remains a separate infrastructure increment; D1 is a candidate, but no production database architecture is claimed yet.
 
 ## Deployment
 

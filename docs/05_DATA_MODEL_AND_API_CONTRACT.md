@@ -54,6 +54,20 @@ The canonical `Opportunity` remains unchanged. The Phase 4 provider-neutral repo
 
 The current implementation is process-local and non-durable. It supports get/list plus exact lifecycle-status and segment filters with stable `createdAt`, then ID ordering. Session 4 permits only `new → enriched`; future lifecycle transitions remain reserved for their owning phases.
 
+## Session 5 Score record boundary
+
+The canonical `Score` remains the immutable scoring decision. The Phase 5 provider-neutral repository stores a `ScoreRecord` wrapper containing:
+
+- one canonical `Score` with explicit `opportunity-scoring-v1` version;
+- a deterministic score band and transparent seven-component breakdown;
+- bounded confidence/freshness modifiers and explicit unknown evidence states;
+- compact Opportunity, Demand, RawEvent, and Source evidence references without raw source text;
+- a deterministic input fingerprint and formula metadata.
+
+`Opportunity.currentScore` and `Opportunity.scoreVersion` are convenience fields updated when scoring succeeds; they do not replace score history. Repeated scoring with an identical fingerprint reuses the existing score. Changed validated scoring input creates another immutable history record. Current storage is process-local and non-durable.
+
+Minimal API operations are `POST /api/v1/opportunities/:id/score` for an enriched Opportunity and `GET /api/v1/opportunities/:id/score` for latest/history retrieval.
+
 ## Privacy
 
 Only store personal/contact information when necessary, lawful, and supported by the source's permitted use. Prefer business/entity-level contact channels over personal information.
