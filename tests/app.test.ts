@@ -32,4 +32,24 @@ describe('application foundation', () => {
       },
     })
   })
+
+  it('serves the deterministic Operator orchestration fixture', async () => {
+    const response = await app.request('/api/v1/fixtures/operator-run', {
+      headers: { 'x-request-id': 'request_operator_route', 'x-trace-id': 'trace_operator_route' },
+    })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        status: 'completed',
+        approval: { required: false },
+        tool: {
+          name: 'opportunity.inspect',
+          permissionDecision: 'allowed',
+          invocationStatus: 'completed',
+          resultValidationStatus: 'valid',
+        },
+        persistence: 'process_local_memory',
+      },
+    })
+  })
 })

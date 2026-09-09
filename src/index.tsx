@@ -8,6 +8,13 @@ import {
   OpportunityService,
 } from './opportunities'
 import {
+  createOperatorRouter,
+  createSession6ToolRegistry,
+  InMemoryOperatorRepository,
+  OperatorService,
+  Session6FixtureToolExecutor,
+} from './operator'
+import {
   createScoringRouter,
   InMemoryScoreRepository,
   OpportunityScoringService,
@@ -23,6 +30,7 @@ type Variables = {
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 const opportunityRepository = new InMemoryOpportunityRepository()
 const scoreRepository = new InMemoryScoreRepository()
+const operatorRepository = new InMemoryOperatorRepository()
 
 app.use('*', async (c, next) => {
   const requestId = c.req.header('x-request-id') ?? crypto.randomUUID()
@@ -54,7 +62,7 @@ app.get('/', (c) =>
   <body>
     <main>
       <h1>AI Business Operator</h1>
-      <p>Session 5 deterministic Opportunity Scoring is running.</p>
+      <p>Session 6 deterministic AI Business Operator orchestration is running.</p>
       <nav aria-label="Foundation endpoints">
         <ul>
           <li><a href="/health/live">Liveness</a></li>
@@ -63,6 +71,7 @@ app.get('/', (c) =>
           <li><a href="/api/v1/fixtures/demand-intelligence">Deterministic intelligence fixture</a></li>
           <li><a href="/api/v1/fixtures/opportunity">Deterministic opportunity fixture</a></li>
           <li><a href="/api/v1/fixtures/opportunity-score">Deterministic opportunity score fixture</a></li>
+          <li><a href="/api/v1/fixtures/operator-run">Deterministic Operator run fixture</a></li>
         </ul>
       </nav>
     </main>
@@ -160,10 +169,60 @@ app.get('/api/v1/fixtures/opportunity-score', async (c) => {
   })
 })
 
+app.get('/api/v1/fixtures/operator-run', async (c) => {
+  const demand = normalizeFixtureDemand()
+  if (!demand.ok) return c.json({ error: demand.error }, 500)
+
+  const config = loadConfig(c.env)
+  const correlation = c.get('correlation')
+  const logger = createLogger(config.public.environment, correlation)
+  const intelligence = new DemandIntelligenceService({
+    now: () => '2026-01-15T10:30:00.000Z',
+    log: (eventName, fields) => logger(fields.errorCode ? 'warn' : 'info', eventName, fields),
+  }).analyze(demand.value, correlation)
+  if (!intelligence.ok) return c.json({ error: intelligence.error }, 500)
+
+  const opportunityService = new OpportunityService({
+    repository: opportunityRepository,
+    now: () => '2026-01-15T10:30:00.000Z',
+    log: (eventName, fields) => logger(fields.errorCode ? 'warn' : 'info', eventName, fields),
+  })
+  const opportunity = await opportunityService.create({ demand: demand.value, intelligence: intelligence.value }, correlation)
+  if (!opportunity.ok) return c.json({ error: opportunity.error }, 500)
+  const enriched = opportunity.value.opportunity.status === 'new'
+    ? opportunityService.transition(opportunity.value.opportunity.id, 'enriched', 'Fixture evidence reviewed before scoring.', correlation)
+    : opportunity
+  if (!enriched.ok) return c.json({ error: enriched.error }, 500)
+
+  const score = await new OpportunityScoringService({
+    opportunityRepository,
+    scoreRepository,
+    now: () => '2026-01-15T10:30:00.000Z',
+    log: (eventName, fields) => logger(fields.errorCode ? 'warn' : 'info', eventName, fields),
+  }).score({ opportunityRecord: enriched.value, demand: demand.value, intelligence: intelligence.value }, correlation)
+  if (!score.ok) return c.json({ error: score.error }, 500)
+
+  const result = await new OperatorService({
+    opportunityRepository,
+    scoreRepository,
+    operatorRepository,
+    toolRegistry: createSession6ToolRegistry(),
+    toolExecutor: new Session6FixtureToolExecutor(),
+    now: () => '2026-01-15T10:30:00.000Z',
+    log: (eventName, fields) => logger(fields.errorCode ? 'warn' : 'info', eventName, fields),
+  }).run({
+    goal: 'Assess the fixture opportunity and recommend the next evidence-backed step.',
+    opportunityId: opportunity.value.opportunity.id,
+  }, { ...correlation, permissions: new Set(['opportunity.read']) })
+  if (!result.ok) return c.json({ error: result.error }, 500)
+  return c.json({ data: result.value })
+})
+
 app.post('/api/v1/ingestion/events', createIngestionHandler())
 app.post('/api/v1/intelligence/classify', createIntelligenceHandler())
 app.route('/api/v1/opportunities', createScoringRouter(opportunityRepository, scoreRepository))
 app.route('/api/v1/opportunities', createOpportunityRouter(opportunityRepository))
+app.route('/api/v1/operator', createOperatorRouter(opportunityRepository, scoreRepository, operatorRepository))
 
 app.notFound((c) =>
   c.json(
