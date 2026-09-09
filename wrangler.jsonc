@@ -2,5 +2,11 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ai-business-operator",
   "compatibility_date": "2026-09-09",
-  "pages_build_output_dir": "./dist"
+  "pages_build_output_dir": "./dist",
+  "vars": {
+    "APP_ENV": "prod",
+    "APP_BASE_URL": "https://ai-business-operator.pages.dev",
+    "LOG_LEVEL": "info",
+    "EXTERNAL_SIDE_EFFECTS_ENABLED": "false"
+  }
 }

@@ -71,8 +71,10 @@ Implement the smallest Phase 2 ingestion service around the existing schemas: va
 ## Deployment
 
 - **Target:** Cloudflare Pages (BYOK)
-- **Production URL:** not yet deployed at the time of this README update
+- **Production URL:** https://ai-business-operator.pages.dev
 - **GitHub:** https://github.com/Sparkmind-obp-off/AI-Business-Operator
+- **Status:** deployed and verified through Cloudflare BYOK.
 - **Configuration:** `wrangler.jsonc`; production secrets must be set through Cloudflare, never source control.
+- **CI note:** `ci/github-actions.yml.example` is ready to activate, but the current GitHub App token cannot create workflow files without the `workflows` permission. `ci/validate.sh` provides the same local/CI gates now.
 
 See `docs/26_SESSION_1_IMPLEMENTATION_NOTES.md` for implementation reconciliation and scope boundaries.
