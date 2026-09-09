@@ -218,6 +218,19 @@ export const ActionSchema = z.object({
   if (value.riskLevel === 'high' && !value.requiresApproval) {
     context.addIssue({ code: 'custom', path: ['requiresApproval'], message: 'high-risk actions require approval' })
   }
+  const approved = value.approvedAt !== null || value.approvedBy !== null
+  if ((value.approvedAt === null) !== (value.approvedBy === null)) {
+    context.addIssue({ code: 'custom', path: ['approvedAt'], message: 'approval timestamp and actor must be present together' })
+  }
+  if (value.status === 'approved' && !approved) {
+    context.addIssue({ code: 'custom', path: ['status'], message: 'approved actions require explicit approval metadata' })
+  }
+  if (!value.requiresApproval && approved) {
+    context.addIssue({ code: 'custom', path: ['approvedAt'], message: 'approval metadata is not valid when approval is not required' })
+  }
+  if (value.status === 'completed' && value.executionReference === null) {
+    context.addIssue({ code: 'custom', path: ['executionReference'], message: 'completed actions require an execution reference' })
+  }
 })
 
 export const ActionOutcomeSchema = z.object({

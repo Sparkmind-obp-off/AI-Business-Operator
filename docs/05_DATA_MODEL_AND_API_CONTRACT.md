@@ -68,6 +68,20 @@ The canonical `Score` remains the immutable scoring decision. The Phase 5 provid
 
 Minimal API operations are `POST /api/v1/opportunities/:id/score` for an enriched Opportunity and `GET /api/v1/opportunities/:id/score` for latest/history retrieval.
 
+## Session 8 Action execution boundary
+
+The canonical `Action` and `ActionOutcome` remain the business records. The Phase 8 provider-neutral execution wrapper adds:
+
+- explicit action permission, registered risk, and approval-policy checks before invocation;
+- matching approval metadata for approval-required actions rather than inference from recommendations or source text;
+- deterministic action and idempotency identity checks before controlled executor selection;
+- one synthetic fixture executor returning `status: simulated`, `synthetic: true`, and `sideEffectPerformed: false`;
+- untrusted executor-result validation before a completed Action or successful ActionOutcome can be recorded;
+- normalized failure, timeout, retryability, duplicate, and idempotency-conflict metadata;
+- append-oriented audit events with request/trace correlation and safe execution provenance.
+
+The current repository is process-local. Action outcomes and idempotency records reset across isolates/restarts. The only exposed Phase 8 route is `GET /api/v1/fixtures/action-execution`; it proves the boundary and performs no live external action.
+
 ## Privacy
 
 Only store personal/contact information when necessary, lawful, and supported by the source's permitted use. Prefer business/entity-level contact channels over personal information.
