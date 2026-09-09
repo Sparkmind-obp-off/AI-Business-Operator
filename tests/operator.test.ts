@@ -190,13 +190,21 @@ describe('Phase 6 AI Business Operator orchestration', () => {
     })
 
     const state = await setup()
+    const saveSpy = vi.spyOn(state.operatorRepository, 'save')
     const invalidExecutor: ToolExecutor = { invoke: vi.fn(async () => ({ status: 'fabricated_success' })) }
     const result = await serviceFor(state, { executor: invalidExecutor }).run({
       goal: 'Assess.', opportunityId: state.opportunityId,
     }, { ...correlation, permissions: new Set(['opportunity.read']) })
     expect(result).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } })
-    const stored = state.operatorRepository.listToolCalls('operator_run_missing')
-    expect(stored).toEqual([])
+    const stored = saveSpy.mock.calls.at(-1)?.[0]
+    expect(stored?.toolCalls[0]).toMatchObject({ status: 'failed', errorCode: 'INVALID_TOOL_RESULT' })
+    expect(stored?.auditEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        eventName: 'operator.tool_result_validated',
+        resultStatus: 'failure',
+        metadata: expect.objectContaining({ errorCode: 'INVALID_TOOL_RESULT' }),
+      }),
+    ]))
   })
 
   it('treats prompt-injection-like source text only as data', async () => {

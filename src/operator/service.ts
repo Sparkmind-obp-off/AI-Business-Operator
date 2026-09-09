@@ -288,6 +288,10 @@ export class OperatorService {
       const outputResult = tool.outputSchema.safeParse(output)
       if (!outputResult.success) {
         toolCalls[0] = ToolCallSchema.parse({ ...toolCalls[0], status: 'failed', completedAt: this.now(), errorCode: 'INVALID_TOOL_RESULT' })
+        audit('operator.tool_result_validated', 'failure', {
+          toolName: tool.definition.name,
+          errorCode: 'INVALID_TOOL_RESULT',
+        })
         return finishFailure('VALIDATION_FAILED', 'Tool result did not satisfy the registered output schema.')
       }
       toolCalls[0] = ToolCallSchema.parse({
