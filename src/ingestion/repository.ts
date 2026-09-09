@@ -1,7 +1,8 @@
-import type { DemandEvidence, DemandObject, RawEvent } from '../domain'
+import type { DemandEvidence, DemandObject, RawEvent, Source } from '../domain'
 
 export interface IngestionArtifact {
   dedupeKey: string
+  source: Source
   rawEvent: RawEvent
   demand: DemandObject
   evidence: DemandEvidence
@@ -30,6 +31,7 @@ export interface IngestionRepository {
   findIdempotency(key: string): IdempotencyRecord | undefined
   saveIdempotency(key: string, record: IdempotencyRecord): void
   findArtifact(dedupeKey: string): IngestionArtifact | undefined
+  findArtifactByEventId(eventId: string): IngestionArtifact | undefined
   saveArtifact(artifact: IngestionArtifact): void
 }
 
@@ -47,6 +49,10 @@ export class InMemoryIngestionRepository implements IngestionRepository {
 
   findArtifact(dedupeKey: string): IngestionArtifact | undefined {
     return this.artifacts.get(dedupeKey)
+  }
+
+  findArtifactByEventId(eventId: string): IngestionArtifact | undefined {
+    return [...this.artifacts.values()].find((artifact) => artifact.rawEvent.id === eventId)
   }
 
   saveArtifact(artifact: IngestionArtifact): void {

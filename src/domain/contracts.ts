@@ -277,6 +277,7 @@ export const AuditEventSchema = z.object({
   resultStatus: z.enum(['success', 'failure', 'denied', 'unknown']),
 })
 
+export type CapabilityStatus = z.infer<typeof CapabilityStatusSchema>
 export type Source = z.infer<typeof SourceSchema>
 export type RawEvent = z.infer<typeof RawEventSchema>
 export type DemandObject = z.infer<typeof DemandObjectSchema>

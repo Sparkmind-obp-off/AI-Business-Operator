@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { createProviderAdapterFixtureHandler } from './adapters'
 import { getReadiness } from './app/health'
 import { createIngestionHandler, normalizeFixtureDemand } from './ingestion'
 import { createIntelligenceHandler, DemandIntelligenceService } from './intelligence'
@@ -62,7 +63,7 @@ app.get('/', (c) =>
   <body>
     <main>
       <h1>AI Business Operator</h1>
-      <p>Session 6 deterministic AI Business Operator orchestration is running.</p>
+      <p>Session 7 capability-aware provider adapter foundation is running.</p>
       <nav aria-label="Foundation endpoints">
         <ul>
           <li><a href="/health/live">Liveness</a></li>
@@ -72,6 +73,7 @@ app.get('/', (c) =>
           <li><a href="/api/v1/fixtures/opportunity">Deterministic opportunity fixture</a></li>
           <li><a href="/api/v1/fixtures/opportunity-score">Deterministic opportunity score fixture</a></li>
           <li><a href="/api/v1/fixtures/operator-run">Deterministic Operator run fixture</a></li>
+          <li><a href="/api/v1/fixtures/provider-adapter">Capability-aware provider adapter fixture</a></li>
         </ul>
       </nav>
     </main>
@@ -218,6 +220,7 @@ app.get('/api/v1/fixtures/operator-run', async (c) => {
   return c.json({ data: result.value })
 })
 
+app.get('/api/v1/fixtures/provider-adapter', createProviderAdapterFixtureHandler())
 app.post('/api/v1/ingestion/events', createIngestionHandler())
 app.post('/api/v1/intelligence/classify', createIntelligenceHandler())
 app.route('/api/v1/opportunities', createScoringRouter(opportunityRepository, scoreRepository))

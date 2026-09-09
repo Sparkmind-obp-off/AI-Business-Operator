@@ -254,6 +254,7 @@ export class IngestionService {
 
     return success({
       dedupeKey,
+      source,
       rawEvent,
       demand: normalized.value.demand,
       evidence: normalized.value.evidence,

@@ -3,7 +3,7 @@
 ## Project Overview
 
 - **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
-- **Current phase:** Session 6 — deterministic, approval-gated AI Business Operator orchestration with process-local audit records.
+- **Current phase:** Session 7 — capability-aware, provider-neutral adapter foundation with one deterministic synthetic fixture path.
 - **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
 - **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
@@ -39,6 +39,12 @@
 - High-risk `external.action.fixture` stops at `approval_required`; it cannot perform an external side effect before approval.
 - Process-local OperatorRun, ToolCall, and append-oriented audit records preserve request/trace/run correlation while excluding raw source text and credentials.
 - Prompt-injection-like source content remains data and cannot select tools, grant permission, or bypass approval.
+- Provider-neutral `ProviderAdapter` boundary for capability discovery, status, configuration validation, and fetch operations.
+- Explicit capability, authentication, pagination, rate-limit, identity-stability, freshness, approval, compliance, retryability, and adapter-health metadata.
+- One deterministic Phase 7 fixture adapter proving `Adapter → RawEvent → existing Ingestion → DemandObject → existing Demand Intelligence`; it is always labeled synthetic and never claims live provider access.
+- Truthful approval-required, unavailable, degraded/partial, rate-limited, invalid-configuration, and provider-error behavior without bypasses or fabricated empty success.
+- Canonical Source preservation in process-local ingestion artifacts plus stable external IDs, timestamps, adapter provenance, transformation references, and existing idempotency/deduplication.
+- Safe adapter lifecycle logs containing provider/source/adapter/status/count metadata only, without credentials or raw source text.
 
 ## Functional URIs
 
@@ -60,6 +66,7 @@
 | `POST` | `/api/v1/opportunities/:id/score` | Score an enriched Opportunity from canonical `{ "demand", "intelligence" }` input |
 | `GET` | `/api/v1/opportunities/:id/score` | Retrieve latest Score and immutable process-local score history |
 | `GET` | `/api/v1/fixtures/operator-run` | Run the complete deterministic Phase 6 fixture through the read-only tool boundary |
+| `GET` | `/api/v1/fixtures/provider-adapter` | Run the synthetic Phase 7 provider adapter through ingestion and Demand Intelligence with capability/status metadata |
 | `POST` | `/api/v1/operator/runs` | Run the Operator for `{ "goal", "opportunityId", "requestedTool?" }`; API permissions are intentionally limited to `opportunity.read` |
 | `GET` | `/api/v1/operator/runs/:id` | Retrieve one process-local Operator run with bounded context, plan, tool decisions, and audit events |
 
@@ -67,7 +74,7 @@ The ingestion endpoint requires an `Idempotency-Key` header (8–128 safe charac
 
 ## Data Architecture
 
-Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, and stores source references plus lifecycle history in an `OpportunityRecord`. Session 5 consumes the validated Opportunity record, DemandObject, and DemandIntelligenceResult through `src/scoring`; it creates a separate immutable `ScoreRecord`, updates only the Opportunity score convenience fields/lifecycle, and exposes all seven contributions. Session 6 consumes only canonical Opportunity, latest consistent Score, compact evidence references, and provenance through `src/operator`; it creates a bounded context and deterministic plan before registry, permission, schema, approval, execution, result-validation, and audit gates. The synthetic fixture and application paths do not access a provider or require credentials. Provider fields remain outside canonical Opportunity, scoring, and Operator logic.
+Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, and stores source references plus lifecycle history in an `OpportunityRecord`. Session 5 consumes the validated Opportunity record, DemandObject, and DemandIntelligenceResult through `src/scoring`; it creates a separate immutable `ScoreRecord`, updates only the Opportunity score convenience fields/lifecycle, and exposes all seven contributions. Session 6 consumes only canonical Opportunity, latest consistent Score, compact evidence references, and provenance through `src/operator`; it creates a bounded context and deterministic plan before registry, permission, schema, approval, execution, result-validation, and audit gates. Session 7 adds `src/adapters` as the provider-specific boundary; the deterministic adapter validates a canonical Source, reports truthful capability/health state, emits canonical ingestion event inputs, reuses existing ingestion identity/deduplication, and hands resulting DemandObjects to the existing Demand Intelligence service. The fixture path does not access a live provider or require credentials. Provider fields remain outside canonical Opportunity, scoring, and Operator logic.
 
 The repository interfaces map conceptually to `sources → raw_events → demand_objects → demand_evidence → opportunities → opportunity_evidence → scores`. Current ingestion, Opportunity, Score, and Operator run/audit implementations are in-memory, process-local maps. They are **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are computed on request and are not durably stored. Stable deterministic ordering and latest-score/run retrieval apply only within the current process-local repository instance.
 
@@ -137,11 +144,12 @@ External source text is stored as untrusted data and never executed as applicati
 - Durable Score persistence across Cloudflare isolates/deployments.
 - Human score override workflow and later outcome-based calibration.
 - Live LLM planning, durable Operator/audit persistence, user approval submission/resume flow, and real action records/outcomes.
-- Live tool/provider execution, external actions, Make.com, provider adapters, voice, authentication/authorization, and polished UI.
+- Live provider credentials and live provider adapters; the implemented Phase 7 path is synthetic fixture data only.
+- Live tool execution, external actions, Make.com scenarios, voice, authentication/authorization, and polished UI.
 
 ## Recommended Next Step
 
-Proceed to **Phase 7 — Provider Adapters / Capability-Aware Source Integration** behind the stable canonical and Operator boundaries. Durable storage remains a separate infrastructure increment; D1 is a candidate, but no production database architecture is claimed yet.
+Proceed to **Phase 8 — Actions / Execution Boundary** while preserving the existing permission and approval gates. Durable storage remains a separate infrastructure increment; D1 is a candidate, but no production database architecture is claimed yet. Any future live provider must independently pass capability, authorization, provenance, rate-limit, and compliance review.
 
 ## Deployment
 

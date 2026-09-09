@@ -80,6 +80,7 @@ export const IngestionRequestSchema = z
     }
   })
 
+export type IngestionEventInput = z.infer<typeof IngestionEventInputSchema>
 export type IngestionRequest = z.infer<typeof IngestionRequestSchema>
 
 export interface IngestionResponse {
