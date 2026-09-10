@@ -106,6 +106,7 @@ export const OperatorResultSchema = z.object({
   approval: z.object({
     required: z.boolean(),
     reason: z.string().min(1).max(500).nullable(),
+    reference: z.string().min(1).max(512).nullable(),
   }),
   tool: z.object({
     name: z.string().min(1).max(120),

@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import {
+  ActionExecutionService,
   createActionExecutionFixtureHandler,
+  DeterministicFixtureActionExecutor,
   InMemoryActionExecutionRepository,
 } from './actions'
 import { createProviderAdapterFixtureHandler } from './adapters'
@@ -26,6 +28,7 @@ import {
 } from './scoring'
 import { ConfigurationError, loadConfig, type RuntimeEnvironment } from './shared/config'
 import { createLogger, type CorrelationContext } from './shared/logger'
+import { createVoiceFixtureHandler } from './voice'
 
 type Bindings = RuntimeEnvironment
 type Variables = {
@@ -68,7 +71,7 @@ app.get('/', (c) =>
   <body>
     <main>
       <h1>AI Business Operator</h1>
-      <p>Session 8 approval-gated action execution boundary is running.</p>
+      <p>Session 9 provider-neutral voice interface foundation is running.</p>
       <nav aria-label="Foundation endpoints">
         <ul>
           <li><a href="/health/live">Liveness</a></li>
@@ -80,6 +83,7 @@ app.get('/', (c) =>
           <li><a href="/api/v1/fixtures/operator-run">Deterministic Operator run fixture</a></li>
           <li><a href="/api/v1/fixtures/provider-adapter">Capability-aware provider adapter fixture</a></li>
           <li><a href="/api/v1/fixtures/action-execution">Approval-gated action execution fixture</a></li>
+          <li><a href="/api/v1/fixtures/voice-session">Provider-neutral synthetic voice session fixture</a></li>
         </ul>
       </nav>
     </main>
@@ -228,6 +232,21 @@ app.get('/api/v1/fixtures/operator-run', async (c) => {
 
 app.get('/api/v1/fixtures/provider-adapter', createProviderAdapterFixtureHandler())
 app.get('/api/v1/fixtures/action-execution', createActionExecutionFixtureHandler(actionExecutionRepository))
+app.get('/api/v1/fixtures/voice-session', createVoiceFixtureHandler(
+  opportunityRepository,
+  scoreRepository,
+  () => {
+    const repository = new InMemoryActionExecutionRepository()
+    return {
+      repository,
+      service: new ActionExecutionService({
+        repository,
+        toolRegistry: createSession6ToolRegistry(),
+        executor: new DeterministicFixtureActionExecutor(),
+      }),
+    }
+  },
+))
 app.post('/api/v1/ingestion/events', createIngestionHandler())
 app.post('/api/v1/intelligence/classify', createIntelligenceHandler())
 app.route('/api/v1/opportunities', createScoringRouter(opportunityRepository, scoreRepository))

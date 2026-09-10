@@ -217,7 +217,7 @@ export class OperatorService {
       persist()
       return success(OperatorResultSchema.parse({
         runId, status: 'unavailable', plan, recommendation: plan.recommendation,
-        approval: { required: false, reason: 'Requested tool is not registered.' },
+        approval: { required: false, reason: 'Requested tool is not registered.', reference: null },
         tool: { name: toolName, version: 'unknown', permissionDecision: 'denied', invocationStatus: 'not_invoked', resultValidationStatus: 'not_applicable', output: null },
         evidence: context.evidence.references, persistence: 'process_local_memory',
       }))
@@ -261,7 +261,7 @@ export class OperatorService {
       return success(OperatorResultSchema.parse({
         runId, status: 'approval_required', plan,
         recommendation: `Menunggu approval: ${plan.recommendation}`,
-        approval: { required: true, reason: policy.reason },
+        approval: { required: true, reason: policy.reason, reference: `approval:${toolCallId}` },
         tool: { name: tool.definition.name, version: tool.definition.version, permissionDecision: 'approval_required', invocationStatus: 'not_invoked', resultValidationStatus: 'not_applicable', output: null },
         evidence: context.evidence.references, persistence: 'process_local_memory',
       }))
@@ -273,7 +273,7 @@ export class OperatorService {
       persist()
       return success(OperatorResultSchema.parse({
         runId, status: tool.definition.enabled ? 'denied' : 'unavailable', plan, recommendation: plan.recommendation,
-        approval: { required: false, reason: policy.reason },
+        approval: { required: false, reason: policy.reason, reference: null },
         tool: { name: tool.definition.name, version: tool.definition.version, permissionDecision: 'denied', invocationStatus: 'not_invoked', resultValidationStatus: 'not_applicable', output: null },
         evidence: context.evidence.references, persistence: 'process_local_memory',
       }))
@@ -304,7 +304,7 @@ export class OperatorService {
       this.log('operator.completed', { status: 'completed', data: { runId, opportunityId: goal.opportunityId, toolName: tool.definition.name } })
       return success(OperatorResultSchema.parse({
         runId, status: 'completed', plan, recommendation: plan.recommendation,
-        approval: { required: false, reason: null },
+        approval: { required: false, reason: null, reference: null },
         tool: { name: tool.definition.name, version: tool.definition.version, permissionDecision: 'allowed', invocationStatus: 'completed', resultValidationStatus: 'valid', output: outputResult.data },
         evidence: context.evidence.references, persistence: 'process_local_memory',
       }))

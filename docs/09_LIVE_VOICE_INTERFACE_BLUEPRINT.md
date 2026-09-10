@@ -32,3 +32,17 @@ Operator: searches permitted sources → gathers evidence → deduplicates → s
 ## Safety boundary
 
 Voice commands must not silently authorize external messages, purchases, account changes, or other consequential actions. Require explicit confirmation according to tool risk policy.
+
+## Session 9 provider-neutral foundation
+
+The executable foundation is intentionally synthetic and process-local:
+
+`Synthetic normalized utterance → deterministic intent/confidence → bounded voice context → existing Operator → existing tool/permission/approval policy → existing ActionExecutionService → validated result → voice response`
+
+The voice layer defines explicit `created`, `active`, `interrupted`, `cancelled`, `completed`, and `failed` session states plus correlated turns and progress events. Context retains at most four compact prior-turn references and excludes raw audio, secrets, credentials, full source payloads, and unlimited history.
+
+A voice action request stops at the Operator's existing approval gate. Explicit confirmation is accepted only while the session holds the exact pending approval reference produced by that Operator run. Generic `yes`/`oke`/`lanjut` without pending context returns clarification and cannot invoke the action service. Voice never calls an executor directly.
+
+Interruption is a deterministic process-local state marker; it does not claim true asynchronous provider cancellation. Cancellation is terminal, clears pending approval, blocks later turns, and does not replay a completed or pending action. No unsafe automatic retry is provided.
+
+`GET /api/v1/fixtures/voice-session` demonstrates this path with synthetic text and a validated no-side-effect fixture action. It is not live audio, WebRTC, STT/TTS, a live LLM, durable voice storage, or production voice.

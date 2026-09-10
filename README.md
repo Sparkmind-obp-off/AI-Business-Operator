@@ -3,7 +3,7 @@
 ## Project Overview
 
 - **Goal:** turn permitted, evidence-backed demand signals into traceable opportunities and approved actions.
-- **Current phase:** Session 8 — approval-gated, provider-neutral action execution boundary with one deterministic no-side-effect fixture executor.
+- **Current phase:** Session 9 — provider-neutral voice-interface foundation over the existing Operator, permission, approval, and validated action boundaries.
 - **Stack:** TypeScript, Hono, Zod, Vitest, Vite, Cloudflare Pages.
 - **Architecture:** provider-neutral modular monolith; `/docs` remains the source of truth.
 
@@ -50,6 +50,10 @@
 - Process-local action execution repository with action identity plus idempotency-key duplicate replay protection, conflicting-key rejection, and explicit reset-on-isolate/restart limitations.
 - Executor results are treated as untrusted: malformed, contradictory, credential-bearing, failed, and timed-out results are normalized before any success outcome is recorded.
 - Append-oriented action audit events preserve action/opportunity/executor/risk/approval/result/correlation metadata without raw payloads or credentials.
+- Provider-neutral `src/voice` contracts cover deterministic sessions, turns, intent/confidence, bounded context, progress events, responses, explicit state transitions, interruption, and cancellation.
+- The synthetic voice fixture reuses the existing Operator, Session 6 tool registry/permission/approval policy, and Session 8 validated action boundary; voice never directly invokes an executor.
+- Generic confirmation without an exact pending approval is clarification-only, prompt-injection-like utterances remain untrusted data, and voice responses preserve actual validated result states.
+- Voice context retains at most four compact prior-turn references, logs/events omit raw utterances and secrets, and all voice/session storage remains process-local and non-durable.
 
 ## Functional URIs
 
@@ -73,6 +77,7 @@
 | `GET` | `/api/v1/fixtures/operator-run` | Run the complete deterministic Phase 6 fixture through the read-only tool boundary |
 | `GET` | `/api/v1/fixtures/provider-adapter` | Run the synthetic Phase 7 provider adapter through ingestion and Demand Intelligence with capability/status metadata |
 | `GET` | `/api/v1/fixtures/action-execution` | Execute the explicit-approved Phase 8 synthetic fixture through permission, approval, idempotency, executor-result validation, outcome, and audit gates; no real side effect occurs |
+| `GET` | `/api/v1/fixtures/voice-session` | Run a deterministic synthetic voice-text session through intent, bounded context, existing Operator approval, exact pending approval, Session 8 action validation, progress events, and truthful response; no live audio or external side effect |
 | `POST` | `/api/v1/operator/runs` | Run the Operator for `{ "goal", "opportunityId", "requestedTool?" }`; API permissions are intentionally limited to `opportunity.read` |
 | `GET` | `/api/v1/operator/runs/:id` | Retrieve one process-local Operator run with bounded context, plan, tool decisions, and audit events |
 
@@ -80,7 +85,7 @@ The ingestion endpoint requires an `Idempotency-Key` header (8–128 safe charac
 
 ## Data Architecture
 
-Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, and stores source references plus lifecycle history in an `OpportunityRecord`. Session 5 consumes the validated Opportunity record, DemandObject, and DemandIntelligenceResult through `src/scoring`; it creates a separate immutable `ScoreRecord`, updates only the Opportunity score convenience fields/lifecycle, and exposes all seven contributions. Session 6 consumes only canonical Opportunity, latest consistent Score, compact evidence references, and provenance through `src/operator`; it creates a bounded context and deterministic plan before registry, permission, schema, approval, execution, result-validation, and audit gates. Session 7 adds `src/adapters` as the provider-specific boundary; the deterministic adapter validates a canonical Source, reports truthful capability/health state, emits canonical ingestion event inputs, reuses existing ingestion identity/deduplication, and hands resulting DemandObjects to the existing Demand Intelligence service. The fixture path does not access a live provider or require credentials. Session 8 adds `src/actions` as the controlled execution boundary: canonical action validation precedes Session 6 registry permission/risk evaluation, explicit approval matching, process-local idempotency, controlled executor selection, execution, untrusted-result schema validation, canonical outcome recording, and append-oriented audit. The only executor is synthetic and cannot claim or perform a live external action. Provider fields remain outside canonical Opportunity, scoring, Operator, and Action domain logic.
+Canonical domain contracts live in `src/domain/contracts.ts`. Session 2 structural normalization still produces honest `unknown` semantic fields. Session 3 consumes that canonical `DemandObject` through `src/intelligence`, validates a separate `DemandIntelligenceResult`, and never mutates observed source facts. Session 4 consumes both validated records through `src/opportunities`, derives only bounded title/segment/offer fields, and stores source references plus lifecycle history in an `OpportunityRecord`. Session 5 consumes the validated Opportunity record, DemandObject, and DemandIntelligenceResult through `src/scoring`; it creates a separate immutable `ScoreRecord`, updates only the Opportunity score convenience fields/lifecycle, and exposes all seven contributions. Session 6 consumes only canonical Opportunity, latest consistent Score, compact evidence references, and provenance through `src/operator`; it creates a bounded context and deterministic plan before registry, permission, schema, approval, execution, result-validation, and audit gates. Session 7 adds `src/adapters` as the provider-specific boundary; the deterministic adapter validates a canonical Source, reports truthful capability/health state, emits canonical ingestion event inputs, reuses existing ingestion identity/deduplication, and hands resulting DemandObjects to the existing Demand Intelligence service. The fixture path does not access a live provider or require credentials. Session 8 adds `src/actions` as the controlled execution boundary: canonical action validation precedes Session 6 registry permission/risk evaluation, explicit approval matching, process-local idempotency, controlled executor selection, execution, untrusted-result schema validation, canonical outcome recording, and append-oriented audit. The only executor is synthetic and cannot claim or perform a live external action. Session 9 adds `src/voice` strictly as an interface: deterministic input normalization and intent/confidence feed bounded context into the existing Operator; an Operator-issued approval reference is retained exactly; explicit confirmation with pending context passes into the existing action service; and only validated action results become voice responses. Provider fields remain outside canonical Opportunity, scoring, Operator, Action, and voice business logic.
 
 The repository interfaces map conceptually to `sources → raw_events → demand_objects → demand_evidence → opportunities → opportunity_evidence → scores → actions → action_outcomes`. Current ingestion, Opportunity, Score, Operator run/audit, and Action execution/outcome/idempotency implementations are in-memory, process-local maps. They are **not durable production persistence** and can reset between Cloudflare isolates or deployments. Intelligence results are computed on request and are not durably stored. Stable deterministic ordering, latest-score/run retrieval, and duplicate action replay protection apply only within the current process-local repository instance.
 
@@ -152,11 +157,11 @@ External source text is stored as untrusted data and never executed as applicati
 - Live LLM planning, durable Operator/audit persistence, and an authenticated user approval submission/resume API.
 - Durable action, outcome, audit, and idempotency persistence across Cloudflare isolates/restarts.
 - Live provider credentials and live provider adapters; the implemented Phase 7 path is synthetic fixture data only.
-- Live external action executors, Make.com scenarios, voice, authentication/authorization, and polished UI.
+- Live external action executors, Make.com scenarios, live audio/STT/TTS providers, durable voice sessions, WebRTC streaming, authentication/authorization, and polished UI.
 
 ## Recommended Next Step
 
-Proceed to **Phase 9 — Live Voice Interface** only as another interface over the existing application contracts. Before any live external executor is enabled, add authenticated approval submission, durable action/outcome/idempotency persistence, provider-specific sandbox verification, and independent authorization/compliance review. D1 remains a candidate for a later persistence increment; no production database migration is claimed in Session 8.
+Proceed to **Phase 10 — Feedback / Learning** using versioned, auditable outcome and user-feedback records without retroactively changing historical decisions. Before any live voice provider or external executor is enabled, add authenticated approval submission, durable session/action/outcome/idempotency persistence, provider-specific sandbox verification, retention controls, and independent authorization/compliance review. D1 remains a candidate for a later persistence increment; no production database migration is claimed in Session 9.
 
 ## Deployment
 
